@@ -229,28 +229,28 @@ class BacktestForwardMode(Enum):
 
 @dataclass
 class BacktestConfig:
-    Symbol: str = "EURUSD"
-    Period: Timeframe = Timeframe.M5
-    Model: BacktestModel = BacktestModel.REAL_TICKS
-    ExecutionMode: BacktestMode | int = 50
-    Optimization: BacktestOptimization = BacktestOptimization.DISABLED
-    OptimizationCriterion: BacktestOptimizationCriterion = BacktestOptimizationCriterion.BALANCE_PROFITABILITY
-    FromDate: str = "2024.01.01"
-    ToDate: str = "2025.01.01"
-    ForwardMode: BacktestForwardMode = BacktestForwardMode.OFF
-    ForwardDate: str = "2024.09.01"
-    Deposit: float = 5000
-    Leverage: str = "1:100"
-    ReplaceReport: bool = True
-    ReportName: str = "BacktestResult.htm"
-    ShutdownTerminal: bool = True
-    Visual: bool = False
-    UseLocal: bool = True
-    UseRemote: bool = False
-    UseCloud: bool = False
+    symbol: str = "EURUSD"
+    period: Timeframe = Timeframe.M5
+    model: BacktestModel = BacktestModel.REAL_TICKS
+    execution_mode: BacktestMode | int = 50
+    optimization: BacktestOptimization = BacktestOptimization.DISABLED
+    optimization_criterion: BacktestOptimizationCriterion = BacktestOptimizationCriterion.BALANCE_PROFITABILITY
+    from_date: str = "2024.01.01"
+    to_date: str = "2025.01.01"
+    forward_mode: BacktestForwardMode = BacktestForwardMode.OFF
+    forward_date: str = "2024.09.01"
+    deposit: float = 5000
+    leverage: str = "1:100"
+    replace_report: bool = True
+    report_name: str = "BacktestResult.htm"
+    shutdown_terminal: bool = True
+    visual: bool = False
+    use_local: bool = True
+    use_remote: bool = False
+    use_cloud: bool = False
 
 
-def FindMetaQuotes() -> Path:
+def find_metaquotes() -> Path:
     # Locate terminal data directories in MetaTrader's per-user storage.
     appdata = Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming"))
     terminal_root = appdata / "MetaQuotes" / "Terminal"
@@ -264,7 +264,7 @@ def FindMetaQuotes() -> Path:
     return candidates[0]
 
 
-def FindMetaEditor(metaquotes: Path) -> Path:
+def find_metaeditor(metaquotes: Path) -> Path:
     # Validate the terminal data directory before resolving its installation.
     metaquotes = Path(metaquotes)
     if not metaquotes.is_dir() or not (metaquotes / "MQL5").is_dir():
@@ -285,7 +285,14 @@ def FindMetaEditor(metaquotes: Path) -> Path:
                     return editor
 
     # Fall back to a uniquely installed editor when origin metadata is unavailable.
-    roots = {Path(path) for path in (os.environ.get("ProgramFiles"), os.environ.get("ProgramFiles(x86)")) if path}
+    roots = {
+        Path(path)
+        for path in (
+            os.environ.get("ProgramFiles"),
+            os.environ.get("ProgramFiles(x86)"),
+        )
+        if path
+    }
     candidates = sorted({editor for root in roots if root.is_dir() for name in ("MetaEditor64.exe", "MetaEditor.exe") for editor in root.rglob(name)})
     if not candidates:
         raise FileNotFoundError(f"No MetaEditor executable found for terminal data directory {metaquotes}")
@@ -294,7 +301,7 @@ def FindMetaEditor(metaquotes: Path) -> Path:
     return candidates[0]
 
 
-def StartTerminal(metaeditor: Path, args: str = "", background: bool = True):
+def start_terminal(metaeditor: Path, args: str = "", background: bool = True):
     # Validate the editor path and select the terminal architecture that matches it.
     metaeditor = Path(metaeditor)
     if not metaeditor.is_file():
@@ -315,47 +322,47 @@ def StartTerminal(metaeditor: Path, args: str = "", background: bool = True):
     return subprocess.Popen(command, startupinfo=startupinfo)
 
 
-def SetMarketWatch(metaquotes: Path, metaeditor: Path, Symbols: list[str]):
+def set_market_watch(metaquotes: Path, metaeditor: Path, symbols: list[str]):
     # Create set market watch expert
-    DestinationDir = os.path.join(metaquotes, "MQL5/Scripts/MetatraderAutomation")
-    Destination = os.path.join(DestinationDir, "SetMarketWatch.ex5")
-    os.makedirs(DestinationDir, exist_ok=True)
-    with open(Destination, "wb") as f:
+    destination_dir = os.path.join(metaquotes, "MQL5/Scripts/MetatraderAutomation")
+    destination = os.path.join(destination_dir, "SetMarketWatch.ex5")
+    os.makedirs(destination_dir, exist_ok=True)
+    with open(destination, "wb") as f:
         f.write(SET_MARKET_WATCH_EXPERT)
 
     # Store the requested EA input where the terminal can load startup presets.
-    PresetPath = Path(metaquotes) / "MQL5" / "Presets" / "SetMarketWatch.set"
-    PresetPath.parent.mkdir(parents=True, exist_ok=True)
-    PresetPath.write_text(f"IN_SYMBOLS={','.join(Symbols)}\n", encoding="ascii")
+    preset_path = Path(metaquotes) / "MQL5" / "Presets" / "SetMarketWatch.set"
+    preset_path.parent.mkdir(parents=True, exist_ok=True)
+    preset_path.write_text(f"IN_SYMBOLS={','.join(symbols)}\n", encoding="ascii")
 
     # Create the startup configuration and load the generated EA preset.
-    ConfigPath = Path(os.path.abspath("SetMarketWatch.ini"))
-    Config = configparser.ConfigParser()
-    Config.add_section("Experts")
-    Experts = Config["Experts"]
-    Experts["Enabled"] = "1"
-    Experts["AllowLiveTrading"] = "0"
-    Experts["AllowDllImport"] = "0"
-    Config.add_section("StartUp")
-    StartUp = Config["StartUp"]
-    StartUp["Script"] = "MetatraderAutomation/SetMarketWatch.ex5"
-    StartUp["ScriptParameters"] = PresetPath.name
-    StartUp["Symbol"] = "EURUSD"
-    StartUp["Period"] = "H1"
-    StartUp["ShutdownTerminal"] = "1"
+    config_path = Path(os.path.abspath("SetMarketWatch.ini"))
+    config = configparser.ConfigParser()
+    config.add_section("Experts")
+    experts = config["Experts"]
+    experts["Enabled"] = "1"
+    experts["AllowLiveTrading"] = "0"
+    experts["AllowDllImport"] = "0"
+    config.add_section("StartUp")
+    startup = config["StartUp"]
+    startup["Script"] = "MetatraderAutomation/SetMarketWatch.ex5"
+    startup["ScriptParameters"] = preset_path.name
+    startup["Symbol"] = "EURUSD"
+    startup["Period"] = "H1"
+    startup["ShutdownTerminal"] = "1"
     with open("SetMarketWatch.ini", "w") as f:
-        Config.write(f)
+        config.write(f)
 
     # start metatrader
-    proc = StartTerminal(metaeditor, f'/config:"{ConfigPath}"')
+    proc = start_terminal(metaeditor, f'/config:"{config_path}"')
     proc.wait()
 
     # remove temp files
-    ConfigPath.unlink(missing_ok=True)
-    PresetPath.unlink(missing_ok=True)
+    config_path.unlink(missing_ok=True)
+    preset_path.unlink(missing_ok=True)
 
 
-def RemoveBacktestCache(metaquotes: Path, strategy: str, symbol: str, timeframe: Timeframe):
+def remove_backtest_cache(metaquotes: Path, strategy: str, symbol: str, timeframe: Timeframe):
     # Restrict deletion to cache files for the requested expert, symbol, and period.
     cache_directory = Path(metaquotes) / "tester" / "cache"
     strategy_name = Path(strategy).stem
@@ -371,7 +378,7 @@ def RemoveBacktestCache(metaquotes: Path, strategy: str, symbol: str, timeframe:
             cache_file.unlink()
 
 
-def GetProgramType(compiled_path: Path | str):
+def get_program_type(compiled_path: Path | str):
     # Validate the supplied file before reading its compiled header.
     try:
         compiled_path = Path(compiled_path)
@@ -395,133 +402,161 @@ def GetProgramType(compiled_path: Path | str):
     return "unknown"
 
 
-def CreateBacktestFile(BacktestFilePath: str, ExpertPath: str, Backtest: BacktestConfig | None = None, Inputs=None):
+def create_backtest_file(
+    backtest_file_path: str,
+    expert_path: str,
+    backtest: BacktestConfig | None = None,
+    inputs=None,
+):
     # Use the standard backtest settings when no custom configuration is provided.
-    Backtest = Backtest or BacktestConfig()
+    backtest = backtest or BacktestConfig()
 
     # Create the tester configuration from the typed backtest settings.
-    Config = configparser.ConfigParser()
-    Config.add_section("Tester")
-    TesterSect = Config["Tester"]
-    TesterSect["Expert"] = ExpertPath
-    TesterSect["Symbol"] = Backtest.Symbol
-    TesterSect["Period"] = Backtest.Period.value
-    TesterSect["Model"] = str(Backtest.Model.value)
-    TesterSect["ExecutionMode"] = str(Backtest.ExecutionMode.value if isinstance(Backtest.ExecutionMode, BacktestMode) else Backtest.ExecutionMode)
-    TesterSect["Optimization"] = str(Backtest.Optimization.value)
-    TesterSect["OptimizationCriterion"] = str(Backtest.OptimizationCriterion.value)
-    TesterSect["FromDate"] = Backtest.FromDate
-    TesterSect["ToDate"] = Backtest.ToDate
-    TesterSect["ForwardMode"] = str(Backtest.ForwardMode.value)
-    TesterSect["ForwardDate"] = Backtest.ForwardDate
-    TesterSect["Deposit"] = str(Backtest.Deposit)
-    TesterSect["Leverage"] = Backtest.Leverage
-    TesterSect["ReplaceReport"] = str(int(Backtest.ReplaceReport))
-    TesterSect["ShutdownTerminal"] = str(int(Backtest.ShutdownTerminal))
-    TesterSect["Visual"] = str(int(Backtest.Visual))
-    TesterSect["Report"] = Backtest.ReportName
-    TesterSect["UseLocal"] = str(int(Backtest.UseLocal))
-    TesterSect["UseRemote"] = str(int(Backtest.UseRemote))
-    TesterSect["UseCloud"] = str(int(Backtest.UseCloud))
+    config = configparser.ConfigParser()
+    config.add_section("Tester")
+    tester_section = config["Tester"]
+    tester_section["Expert"] = expert_path
+    tester_section["Symbol"] = backtest.symbol
+    tester_section["Period"] = backtest.period.value
+    tester_section["Model"] = str(backtest.model.value)
+    tester_section["ExecutionMode"] = str(backtest.execution_mode.value if isinstance(backtest.execution_mode, BacktestMode) else backtest.execution_mode)
+    tester_section["Optimization"] = str(backtest.optimization.value)
+    tester_section["OptimizationCriterion"] = str(backtest.optimization_criterion.value)
+    tester_section["FromDate"] = backtest.from_date
+    tester_section["ToDate"] = backtest.to_date
+    tester_section["ForwardMode"] = str(backtest.forward_mode.value)
+    tester_section["ForwardDate"] = backtest.forward_date
+    tester_section["Deposit"] = str(backtest.deposit)
+    tester_section["Leverage"] = backtest.leverage
+    tester_section["ReplaceReport"] = str(int(backtest.replace_report))
+    tester_section["ShutdownTerminal"] = str(int(backtest.shutdown_terminal))
+    tester_section["Visual"] = str(int(backtest.visual))
+    tester_section["Report"] = backtest.report_name
+    tester_section["UseLocal"] = str(int(backtest.use_local))
+    tester_section["UseRemote"] = str(int(backtest.use_remote))
+    tester_section["UseCloud"] = str(int(backtest.use_cloud))
 
     # Add the expert input parameters.
-    Config.add_section("TesterInputs")
-    TesterInputsSect = Config["TesterInputs"]
+    config.add_section("TesterInputs")
+    tester_inputs_section = config["TesterInputs"]
 
-    if Inputs is not None:
-        for Key, Value in Inputs.items():
-            TesterInputsSect[Key] = str(Value)
+    if inputs is not None:
+        for key, value in inputs.items():
+            tester_inputs_section[key] = str(value)
 
     # Write the MetaTrader configuration file.
-    with open(BacktestFilePath, "w") as f:
-        Config.write(f)
+    with open(backtest_file_path, "w") as f:
+        config.write(f)
 
 
-def CompileMQ5(metaquotes: Path, metaeditor: Path, SourcePath: Path):
-    Include = os.path.join(metaquotes, "MQL5")
+def compile_mq5(metaquotes: Path, metaeditor: Path, source_path: Path):
+    include = os.path.join(metaquotes, "MQL5")
 
     # Create Log File
-    FileWithoutExt, FileExt = os.path.splitext(SourcePath)
-    LogFile = FileWithoutExt + ".log"
-    open(LogFile, "w").close()
+    file_without_ext, _ = os.path.splitext(source_path)
+    log_file = file_without_ext + ".log"
+    open(log_file, "w").close()
 
     try:
         # Start compilation with each command argument preserved as a separate value.
-        Command = f'"{metaeditor}" /compile:"{SourcePath}" /include:"{Include}" /log:"{LogFile}"'
-        EditorProc = subprocess.Popen(Command)
-        EditorProc.wait()
+        command = f'"{metaeditor}" /compile:"{source_path}" /include:"{include}" /log:"{log_file}"'
+        editor_process = subprocess.Popen(command)
+        editor_process.wait()
 
         # Read Log
-        Errors, Warnings = ParseCompileLog(LogFile)
-        return Errors, Warnings
+        errors, warnings = parse_compile_log(log_file)
+        return errors, warnings
     finally:
         # Delete the temporary log even when compilation or parsing fails.
-        if os.path.exists(LogFile):
-            os.remove(LogFile)
+        if os.path.exists(log_file):
+            os.remove(log_file)
 
 
-def RunBacktestFile(metaquotes: Path, metaeditor: Path, BacktestFilePath: Path, ResultFileName: str):
-    ReportPath = os.path.join(metaquotes, ResultFileName + "htm")
-    OptimizationPath = os.path.join(metaquotes, ResultFileName + ".xml")
-    SymbolsOptimizationPath = os.path.join(metaquotes, ResultFileName + ".symbols.xml")
+def run_backtest_file(metaquotes: Path, metaeditor: Path, backtest_file_path: Path, result_file_name: str):
+    report_path = os.path.join(metaquotes, result_file_name + "htm")
+    optimization_path = os.path.join(metaquotes, result_file_name + ".xml")
+    symbols_optimization_path = os.path.join(metaquotes, result_file_name + ".symbols.xml")
 
-    if os.path.exists(ReportPath):
-        os.remove(ReportPath)
-    if os.path.exists(OptimizationPath):
-        os.remove(OptimizationPath)
-    if os.path.exists(SymbolsOptimizationPath):
-        os.remove(SymbolsOptimizationPath)
+    if os.path.exists(report_path):
+        os.remove(report_path)
+    if os.path.exists(optimization_path):
+        os.remove(optimization_path)
+    if os.path.exists(symbols_optimization_path):
+        os.remove(symbols_optimization_path)
 
-    proc = StartTerminal(metaeditor, "/config:" + str(BacktestFilePath))
+    proc = start_terminal(metaeditor, "/config:" + str(backtest_file_path))
     return proc.wait()
 
 
-def RunBacktestConfig(metaquotes: Path, metaeditor: Path, ExpertPath: str, Backtest: BacktestConfig | None = None, Inputs=None):
-    ConfigPath = Path(os.path.join(Backtest.ReportName + ".ini"))
-    CreateBacktestFile(ConfigPath, ExpertPath, Backtest, Inputs)
-    RunBacktestFile(metaquotes, metaeditor, ConfigPath, Backtest.ReportName)
-    ConfigPath.unlink(missing_ok=True)
+def run_backtest_config(
+    metaquotes: Path,
+    metaeditor: Path,
+    expert_path: str,
+    backtest: BacktestConfig | None = None,
+    inputs=None,
+):
+    backtest = backtest or BacktestConfig()
+    config_path = Path(backtest.report_name + ".ini")
+    create_backtest_file(config_path, expert_path, backtest, inputs)
+    run_backtest_file(metaquotes, metaeditor, config_path, backtest.report_name)
+    config_path.unlink(missing_ok=True)
 
 
-def ParseCompileLog(LogFilePath: str):
-    Errors = []
-    Warnings = []
-    with open(LogFilePath, "r", encoding="utf-16", errors="replace") as File:
-        for Line in File:
-            if Line:
-                StrippedLine = Line.strip()
-                M = ERROR_PATTERN.match(StrippedLine)
-                if M:
-                    if M.group("type") == "warning":
-                        Warnings.append({"Path": M.group("path"), "Row": M.group("row"), "Column": M.group("col"), "Code": M.group("code"), "Message": M.group("msg")})
+def parse_compile_log(log_file_path: str):
+    errors = []
+    warnings = []
+    with open(log_file_path, "r", encoding="utf-16", errors="replace") as file:
+        for line in file:
+            if line:
+                stripped_line = line.strip()
+                match = ERROR_PATTERN.match(stripped_line)
+                if match:
+                    if match.group("type") == "warning":
+                        warnings.append(
+                            {
+                                "Path": match.group("path"),
+                                "Row": match.group("row"),
+                                "Column": match.group("col"),
+                                "Code": match.group("code"),
+                                "Message": match.group("msg"),
+                            }
+                        )
                     else:
-                        Errors.append({"Path": M.group("path"), "Row": M.group("row"), "Column": M.group("col"), "Code": M.group("code"), "Message": M.group("msg")})
+                        errors.append(
+                            {
+                                "Path": match.group("path"),
+                                "Row": match.group("row"),
+                                "Column": match.group("col"),
+                                "Code": match.group("code"),
+                                "Message": match.group("msg"),
+                            }
+                        )
 
-    return Errors, Warnings
+    return errors, warnings
 
 
-def ParseBacktest(metaquotes: Path, ResultFileName: str):
-    Result = {"Backtest": {}, "HistoryDeals": []}
-    ResultFilePath = os.path.join(metaquotes, ResultFileName + ".htm")
+def parse_backtest(metaquotes: Path, result_file_name: str):
+    result = {"Backtest": {}, "HistoryDeals": []}
+    result_file_path = os.path.join(metaquotes, result_file_name + ".htm")
     try:
-        with open(ResultFilePath, "r", encoding="utf-16") as file:
-            ResultFile = file.read()
+        with open(result_file_path, "r", encoding="utf-16") as file:
+            result_file = file.read()
     except UnicodeDecodeError:
-        with open(ResultFilePath, "r", encoding="latin-1") as file:
-            ResultFile = file.read()
+        with open(result_file_path, "r", encoding="latin-1") as file:
+            result_file = file.read()
     except FileNotFoundError:
-        Result["Error"] = f"File not Found"
-        return Result
+        result["Error"] = "File not Found"
+        return result
     try:
-        HTML = BeautifulSoup(ResultFile, "html.parser")
+        html = BeautifulSoup(result_file, "html.parser")
     except Exception as e:
-        Result["Error"] = f"{e}"
-        return Result
+        result["Error"] = f"{e}"
+        return result
 
     txt = lambda s: re.sub(r"\s+", " ", (s or "").strip())
 
     def after(label):
-        td = HTML.find("td", string=lambda t: t and txt(t) == label)
+        td = html.find("td", string=lambda t: t and txt(t) == label)
         if not td:
             return None
         nxt = next((x for x in td.next_siblings if getattr(x, "name", None) == "td"), None)
@@ -530,16 +565,16 @@ def ParseBacktest(metaquotes: Path, ResultFileName: str):
         b = nxt.find("b")
         return txt(b.get_text() if b else nxt.get_text())
 
-    def DealTypeToNumber(Type):
-        if Type == "balance":
+    def deal_type_to_number(deal_type):
+        if deal_type == "balance":
             return 2
-        elif Type == "buy":
+        elif deal_type == "buy":
             return 0
-        elif Type == "sell":
+        elif deal_type == "sell":
             return 1
         return -1
 
-    Backtest = {
+    backtest = {
         "Expert": after("Expert:"),
         "Symbol": after("Symbol:"),
         "Period": after("Period:"),
@@ -548,15 +583,15 @@ def ParseBacktest(metaquotes: Path, ResultFileName: str):
         "Leverage": after("Leverage:"),
     }
 
-    if not Backtest["Symbol"]:
-        Result["Error"] = "Symbol missing"
-        return Result
+    if not backtest["Symbol"]:
+        result["Error"] = "Symbol missing"
+        return result
 
     # Find Backtest Results
-    ResultsDiv = HTML.find("div", string=lambda t: t and txt(t).lower() == "results")
-    if ResultsDiv:
-        table = ResultsDiv.find_parent("table")
-        start_tr = ResultsDiv.find_parent("tr")
+    results_div = html.find("div", string=lambda t: t and txt(t).lower() == "results")
+    if results_div:
+        table = results_div.find_parent("table")
+        start_tr = results_div.find_parent("tr")
         for tr in start_tr.find_all_next("tr"):
             if tr.find_parent("table") != table:
                 break
@@ -575,17 +610,17 @@ def ParseBacktest(metaquotes: Path, ResultFileName: str):
                     if j < len(tds):
                         b = tds[j].find("b")
                         val = txt(b.get_text() if b else tds[j].get_text())
-                        Backtest[label[:-1]] = val
+                        backtest[label[:-1]] = val
                         i = j + 1
                     else:
                         i += 1
                 else:
                     i += 1
 
-    Result["Backtest"] = Backtest
+    result["Backtest"] = backtest
 
     # Find Deals
-    deals_title = HTML.find("div", string=lambda t: t and txt(t).lower() == "deals")
+    deals_title = html.find("div", string=lambda t: t and txt(t).lower() == "deals")
     if deals_title:
         table = deals_title.find_parent("table")
         title_tr = deals_title.find_parent("tr")
@@ -611,175 +646,185 @@ def ParseBacktest(metaquotes: Path, ResultFileName: str):
                 if len(tds) != len(headers):
                     continue
 
-                def AsFloat(Value):
-                    if Value:
-                        if isinstance(Value, str):
-                            Value = Value.replace(" ", "")
-                        return float(Value)
+                def as_float(value):
+                    if value:
+                        if isinstance(value, str):
+                            value = value.replace(" ", "")
+                        return float(value)
                     else:
                         return 0.0
 
-                Deal = {headers[i]: txt(tds[i].get_text()) for i in range(len(headers))}
-                Result["HistoryDeals"].append(
+                deal = {headers[i]: txt(tds[i].get_text()) for i in range(len(headers))}
+                result["HistoryDeals"].append(
                     {
                         "ticket": 0,
-                        "order": Deal["Order"],
-                        "time": Deal["Time"],
+                        "order": deal["Order"],
+                        "time": deal["Time"],
                         "time_msc": 0,
-                        "type": DealTypeToNumber(Deal["Type"]),
-                        "entry": 0 if Deal["Direction"] == "in" else 1,
+                        "type": deal_type_to_number(deal["Type"]),
+                        "entry": 0 if deal["Direction"] == "in" else 1,
                         "magic": 0,
-                        "position_id": int(Deal["Deal"]),
+                        "position_id": int(deal["Deal"]),
                         "reason": 0,
-                        "volume": AsFloat(Deal["Volume"]),
-                        "price": AsFloat(Deal["Price"]),
-                        "commission": AsFloat(Deal["Commission"]),
-                        "swap": AsFloat(Deal["Swap"]),
-                        "profit": AsFloat(Deal["Profit"]),
+                        "volume": as_float(deal["Volume"]),
+                        "price": as_float(deal["Price"]),
+                        "commission": as_float(deal["Commission"]),
+                        "swap": as_float(deal["Swap"]),
+                        "profit": as_float(deal["Profit"]),
                         "fee": 0.0,
-                        "symbol": Deal["Symbol"],
-                        "comment": Deal["Comment"],
+                        "symbol": deal["Symbol"],
+                        "comment": deal["Comment"],
                         "external_id": "",
                     }
                 )
 
-    return Result
+    return result
 
 
-def ParseOptimization(metaquotes: Path, ResultFilePath: str):
-    Result = {"Optimization": []}
-    ResultFilePath = os.path.join(metaquotes, ResultFilePath + ".xml")
+def parse_optimization(metaquotes: Path, result_file_path: str):
+    result = {"Optimization": []}
+    result_file_path = os.path.join(metaquotes, result_file_path + ".xml")
 
     # Load the finalized SpreadsheetML report, allowing MetaTrader reports with a BOM.
     try:
-        with open(ResultFilePath, "rb") as File:
-            Workbook = ET.parse(File).getroot()
+        with open(result_file_path, "rb") as file:
+            workbook = ET.parse(file).getroot()
     except FileNotFoundError:
-        Result["Error"] = "File not Found"
-        return Result
-    except (ET.ParseError, OSError) as Error:
-        Result["Error"] = str(Error)
-        return Result
+        result["Error"] = "File not Found"
+        return result
+    except (ET.ParseError, OSError) as error:
+        result["Error"] = str(error)
+        return result
 
     # Locate the first worksheet table without depending on SpreadsheetML prefixes.
-    Table = next((Element for Element in Workbook.iter() if Element.tag.endswith("}Table")), None)
-    if Table is None:
-        Result["Error"] = "Optimization table missing"
-        return Result
+    table = next((element for element in workbook.iter() if element.tag.endswith("}Table")), None)
+    if table is None:
+        result["Error"] = "Optimization table missing"
+        return result
 
-    Rows = [Element for Element in Table if Element.tag.endswith("}Row")]
-    if not Rows:
-        Result["Error"] = "Optimization headers missing"
-        return Result
+    rows = [element for element in table if element.tag.endswith("}Row")]
+    if not rows:
+        result["Error"] = "Optimization headers missing"
+        return result
 
-    def CellValues(Row):
-        Values = []
-        for Cell in Row:
-            if not Cell.tag.endswith("}Cell"):
+    def cell_values(row):
+        values = []
+        for cell in row:
+            if not cell.tag.endswith("}Cell"):
                 continue
-            Index = Cell.get("{urn:schemas-microsoft-com:office:spreadsheet}Index")
-            if Index:
-                Values.extend([None] * (int(Index) - len(Values) - 1))
-            Data = next((Element for Element in Cell if Element.tag.endswith("}Data")), None)
-            if Data is None:
-                Values.append(None)
+            index = cell.get("{urn:schemas-microsoft-com:office:spreadsheet}Index")
+            if index:
+                values.extend([None] * (int(index) - len(values) - 1))
+            data = next((element for element in cell if element.tag.endswith("}Data")), None)
+            if data is None:
+                values.append(None)
                 continue
-            Value = Data.text or ""
-            DataType = Data.get("{urn:schemas-microsoft-com:office:spreadsheet}Type")
-            if DataType == "Number":
-                Number = float(Value)
-                Value = int(Number) if Number.is_integer() else Number
-            elif DataType == "Boolean":
-                Value = Value == "1"
-            Values.append(Value)
-        return Values
+            value = data.text or ""
+            data_type = data.get("{urn:schemas-microsoft-com:office:spreadsheet}Type")
+            if data_type == "Number":
+                number = float(value)
+                value = int(number) if number.is_integer() else number
+            elif data_type == "Boolean":
+                value = value == "1"
+            values.append(value)
+        return values
 
     # Use the first row as column names and map each optimization pass to it.
-    Headers = CellValues(Rows[0])
-    if not any(Headers):
-        Result["Error"] = "Optimization headers missing"
-        return Result
-    for Row in Rows[1:]:
-        Values = CellValues(Row)
-        if not any(Value is not None for Value in Values):
+    headers = cell_values(rows[0])
+    if not any(headers):
+        result["Error"] = "Optimization headers missing"
+        return result
+    for row in rows[1:]:
+        values = cell_values(row)
+        if not any(value is not None for value in values):
             continue
-        Result["Optimization"].append({Header: Values[Index] if Index < len(Values) else None for Index, Header in enumerate(Headers) if Header})
+        result["Optimization"].append({header: values[index] if index < len(values) else None for index, header in enumerate(headers) if header})
 
     # A header-only report means every tester pass failed or no passes were scheduled.
-    if not Result["Optimization"]:
-        Result["Error"] = "Optimization completed without result rows; inspect the MetaTrader Tester log for failed passes"
+    if not result["Optimization"]:
+        result["Error"] = "Optimization completed without result rows; inspect the MetaTrader Tester log for failed passes"
 
-    return Result
+    return result
 
 
-def _ReadOptimizationCacheText(Data: bytes, Offset: int):
+def _read_optimization_cache_text(data: bytes, offset: int):
     # Decode a null-terminated UTF-16LE field without matching an odd-byte null.
-    End = next((Index for Index in range(Offset, len(Data) - 1, 2) if Data[Index : Index + 2] == b"\x00\x00"), len(Data))
-    return Data[Offset:End].decode("utf-16-le", errors="replace")
+    end = next(
+        (index for index in range(offset, len(data) - 1, 2) if data[index : index + 2] == b"\x00\x00"),
+        len(data),
+    )
+    return data[offset:end].decode("utf-16-le", errors="replace")
 
 
-def _GetOptimizationCacheInputDescriptors(Data: bytes, HeaderSize: int):
+def _get_optimization_cache_input_descriptors(data: bytes, header_size: int):
     # Collect input labels from the variable descriptor region after the fixed header.
-    Names = []
-    SeenNames = set()
-    for Match in OPT_CACHE_INPUT_TEXT.finditer(Data[0x580:HeaderSize]):
-        Name = Match.group().decode("utf-16-le")
-        if len(Name) >= 4 and Name not in SeenNames:
-            Names.append((Name, Match.start() + 0x580, Match.end() + 0x580))
-            SeenNames.add(Name)
+    names = []
+    seen_names = set()
+    for match in OPT_CACHE_INPUT_TEXT.finditer(data[0x580:header_size]):
+        name = match.group().decode("utf-16-le")
+        if len(name) >= 4 and name not in seen_names:
+            names.append((name, match.start() + 0x580, match.end() + 0x580))
+            seen_names.add(name)
 
     # Pair each name with the following storage-offset and storage-width descriptor.
-    Descriptors = []
-    Widths = {1, 2, 4, 8, 16, 32, 64, 128, 256}
-    for Index, (Name, _, End) in enumerate(Names):
-        NextStart = Names[Index + 1][1] if Index + 1 < len(Names) else HeaderSize
-        Candidates = []
-        for Position in range(End, NextStart - 7):
-            Offset, Width = struct.unpack_from("<II", Data, Position)
-            if Offset < 0x10000 and Width in Widths:
-                Candidates.append((Position, Offset, Width))
-        if Candidates:
-            Position, Offset, Width = Candidates[-1]
-            Descriptors.append({"name": Name, "offset": Offset, "width": Width, "optimized": struct.unpack_from("<I", Data, Position - 12)[0] == 1})
-    return Descriptors
+    descriptors = []
+    widths = {1, 2, 4, 8, 16, 32, 64, 128, 256}
+    for index, (name, _, end) in enumerate(names):
+        next_start = names[index + 1][1] if index + 1 < len(names) else header_size
+        candidates = []
+        for position in range(end, next_start - 7):
+            offset, width = struct.unpack_from("<II", data, position)
+            if offset < 0x10000 and width in widths:
+                candidates.append((position, offset, width))
+        if candidates:
+            position, offset, width = candidates[-1]
+            descriptors.append(
+                {
+                    "name": name,
+                    "offset": offset,
+                    "width": width,
+                    "optimized": struct.unpack_from("<I", data, position - 12)[0] == 1,
+                }
+            )
+    return descriptors
 
 
-def _ParseOptimizationCacheInputs(Data: bytes, HeaderSize: int, Descriptors=None):
+def _parse_optimization_cache_inputs(data: bytes, header_size: int, descriptors=None):
     # Decode the static values stored in the input buffer described by each field.
-    Descriptors = Descriptors if Descriptors is not None else _GetOptimizationCacheInputDescriptors(Data, HeaderSize)
+    descriptors = descriptors if descriptors is not None else _get_optimization_cache_input_descriptors(data, header_size)
 
     # Derive the buffer start from the descriptor with the largest storage extent.
-    if not Descriptors:
+    if not descriptors:
         return {}
-    BufferSize = max(Descriptor["offset"] + Descriptor["width"] for Descriptor in Descriptors)
-    BufferStart = HeaderSize - BufferSize
-    if BufferStart < 0 or BufferStart + BufferSize > len(Data):
+    buffer_size = max(descriptor["offset"] + descriptor["width"] for descriptor in descriptors)
+    buffer_start = header_size - buffer_size
+    if buffer_start < 0 or buffer_start + buffer_size > len(data):
         return {}
 
     # Decode integers, doubles, and fixed-width UTF-16 strings from the input buffer.
-    Inputs = {}
-    for Descriptor in Descriptors:
-        Name = Descriptor["name"]
-        Offset = Descriptor["offset"]
-        Width = Descriptor["width"]
-        ValueOffset = BufferStart + Offset
-        if Width == 4:
-            Value = struct.unpack_from("<i", Data, ValueOffset)[0]
-        elif Width == 8:
-            Value = struct.unpack_from("<d", Data, ValueOffset)[0]
-        elif Width % 2 == 0:
-            Value = _ReadOptimizationCacheText(Data[ValueOffset : ValueOffset + Width], 0)
+    inputs = {}
+    for descriptor in descriptors:
+        name = descriptor["name"]
+        offset = descriptor["offset"]
+        width = descriptor["width"]
+        value_offset = buffer_start + offset
+        if width == 4:
+            value = struct.unpack_from("<i", data, value_offset)[0]
+        elif width == 8:
+            value = struct.unpack_from("<d", data, value_offset)[0]
+        elif width % 2 == 0:
+            value = _read_optimization_cache_text(data[value_offset : value_offset + width], 0)
         else:
-            Value = Data[ValueOffset : ValueOffset + Width].hex()
-        Inputs[Name] = Value
-    return Inputs
+            value = data[value_offset : value_offset + width].hex()
+        inputs[name] = value
+    return inputs
 
 
-def _ParseOptimizationCachePasses(Data: bytes, Offset: int, InitialDeposit: int):
+def _parse_optimization_cache_passes(data: bytes, offset: int, initial_deposit: int):
     # Decode the 344-byte result records emitted by the current MetaTrader build.
-    if len(Data) % OPT_CACHE_RESULT_SIZE:
+    if len(data) % OPT_CACHE_RESULT_SIZE:
         return []
-    Fields = (
+    fields = (
         "withdrawal",
         "net_profit",
         "gross_profit",
@@ -806,29 +851,29 @@ def _ParseOptimizationCachePasses(Data: bytes, Offset: int, InitialDeposit: int)
         "sharpe_ratio",
         "minimum_margin_level",
     )
-    Passes = []
-    for Index in range(0, len(Data), OPT_CACHE_RESULT_SIZE):
-        Values = [Value[0] for Value in struct.iter_unpack("<d", Data[Index : Index + OPT_CACHE_RESULT_SIZE])]
-        Metrics = dict(zip(Fields, Values[2:27]))
+    passes = []
+    for index in range(0, len(data), OPT_CACHE_RESULT_SIZE):
+        values = [value[0] for value in struct.iter_unpack("<d", data[index : index + OPT_CACHE_RESULT_SIZE])]
+        metrics = dict(zip(fields, values[2:27]))
         # MetaTrader derives its Total Trades column from net profit and expected payoff.
-        TotalTrades = round(Metrics["net_profit"] / Metrics["expected_payoff"]) if Metrics["expected_payoff"] else 0
-        Passes.append(
+        total_trades = round(metrics["net_profit"] / metrics["expected_payoff"]) if metrics["expected_payoff"] else 0
+        passes.append(
             {
-                "pass": Index // OPT_CACHE_RESULT_SIZE + 1,
-                "offset": Offset + Index,
-                "symbol": _ReadOptimizationCacheText(Data, Index + 280),
-                "initial_deposit": InitialDeposit,
-                "criterion": Values[1],
-                **Metrics,
-                "total_trades": TotalTrades,
+                "pass": index // OPT_CACHE_RESULT_SIZE + 1,
+                "offset": offset + index,
+                "symbol": _read_optimization_cache_text(data, index + 280),
+                "initial_deposit": initial_deposit,
+                "criterion": values[1],
+                **metrics,
+                "total_trades": total_trades,
             }
         )
-    return Passes
+    return passes
 
 
-def _ParseOptimizationCacheSymbolPasses(Data: bytes, Offset: int, Inputs: dict, Descriptors: list[dict]):
+def _parse_optimization_cache_symbol_passes(data: bytes, offset: int, inputs: dict, descriptors: list[dict]):
     # Decode standard single-symbol records after their 16-byte cache preamble.
-    Fields = (
+    fields = (
         "withdrawal",
         "net_profit",
         "gross_profit",
@@ -855,129 +900,136 @@ def _ParseOptimizationCacheSymbolPasses(Data: bytes, Offset: int, Inputs: dict, 
         "sharpe_ratio",
         "minimum_margin_level",
     )
-    RecordSize = 296
-    FirstRecord = 16
-    RequiredSize = 26 * 8
-    OptimizedDescriptors = [Descriptor for Descriptor in Descriptors if Descriptor["optimized"]]
-    Passes = []
-    for Index in range(FirstRecord, len(Data), RecordSize):
-        if len(Data) - Index < RequiredSize:
+    record_size = 296
+    first_record = 16
+    required_size = 26 * 8
+    optimized_descriptors = [descriptor for descriptor in descriptors if descriptor["optimized"]]
+    passes = []
+    for index in range(first_record, len(data), record_size):
+        if len(data) - index < required_size:
             break
-        Values = [Value[0] for Value in struct.iter_unpack("<d", Data[Index : Index + RequiredSize])]
-        Metrics = dict(zip(Fields, Values[1:]))
+        values = [value[0] for value in struct.iter_unpack("<d", data[index : index + required_size])]
+        metrics = dict(zip(fields, values[1:]))
         # MetaTrader derives its Total Trades column from net profit and expected payoff.
-        TotalTrades = round(Metrics["net_profit"] / Metrics["expected_payoff"]) if Metrics["expected_payoff"] else 0
+        total_trades = round(metrics["net_profit"] / metrics["expected_payoff"]) if metrics["expected_payoff"] else 0
         # Decode only values that vary for this optimization pass.
-        Parameters = {}
-        for ParameterIndex, Descriptor in enumerate(OptimizedDescriptors):
-            ValueOffset = Index + 272 + ParameterIndex * 8
-            if ValueOffset + 8 > len(Data):
+        parameters = {}
+        for parameter_index, descriptor in enumerate(optimized_descriptors):
+            value_offset = index + 272 + parameter_index * 8
+            if value_offset + 8 > len(data):
                 break
-            Name = Descriptor["name"]
-            Value = struct.unpack_from("<d", Data, ValueOffset)[0] if isinstance(Inputs.get(Name), float) else struct.unpack_from("<q", Data, ValueOffset)[0]
-            Parameters[Name] = Value
+            name = descriptor["name"]
+            value = struct.unpack_from("<d", data, value_offset)[0] if isinstance(inputs.get(name), float) else struct.unpack_from("<q", data, value_offset)[0]
+            parameters[name] = value
 
         # The final 64-bit field identifies the optimizer's parameter-set ordering.
-        SetIndexOffset = Index + 272 + len(OptimizedDescriptors) * 8
-        SetIndex = struct.unpack_from("<q", Data, SetIndexOffset)[0] if SetIndexOffset + 8 <= len(Data) else None
-        Passes.append(
+        set_index_offset = index + 272 + len(optimized_descriptors) * 8
+        set_index = struct.unpack_from("<q", data, set_index_offset)[0] if set_index_offset + 8 <= len(data) else None
+        passes.append(
             {
-                "pass": len(Passes) + 1,
-                "offset": Offset + Index,
-                "initial_deposit": Values[0],
-                "parameters": Parameters,
-                "parameter_set_index": SetIndex,
-                **Metrics,
-                "total_trades": TotalTrades,
+                "pass": len(passes) + 1,
+                "offset": offset + index,
+                "initial_deposit": values[0],
+                "parameters": parameters,
+                "parameter_set_index": set_index,
+                **metrics,
+                "total_trades": total_trades,
             }
         )
-    return Passes
+    return passes
 
 
-def ParseOptimizationCache(metaquotes: Path, strategy: str, symbol: str, timeframe: Timeframe):
+def parse_optimization_cache(metaquotes: Path, strategy: str, symbol: str, timeframe: Timeframe):
     # Locate the newest cache that belongs to the requested expert, symbol, and period.
     cache_directory = Path(metaquotes) / "tester" / "cache"
     strategy_name = Path(strategy).stem
     cache_prefix = f"{strategy_name}.{symbol}.{timeframe.value}."
-    CacheFiles = sorted(cache_directory.glob(f"{glob.escape(cache_prefix)}*.opt")) if cache_directory.is_dir() else []
-    if not CacheFiles:
-        Result = {"Optimization": []}
-        Result["Error"] = "Cache not found"
-        return Result
+    cache_files = sorted(cache_directory.glob(f"{glob.escape(cache_prefix)}*.opt")) if cache_directory.is_dir() else []
+    if not cache_files:
+        result = {"Optimization": []}
+        result["Error"] = "Cache not found"
+        return result
 
     # Prefer the newest cache when previous tester runs have left matching artifacts.
-    CacheFile = max(CacheFiles, key=lambda File: (File.stat().st_mtime_ns, File.name))
-    return ParseOptimizationCacheFile(CacheFile)
+    cache_file = max(cache_files, key=lambda file: (file.stat().st_mtime_ns, file.name))
+    return parse_optimization_cache_file(cache_file)
 
 
-def ParseOptimizationCacheFile(cache_file: Path):
-    Result = {"Optimization": []}
+def parse_optimization_cache_file(cache_file: Path):
+    result = {"Optimization": []}
     try:
-        Data = cache_file.read_bytes()
-        if len(Data) < 0x54A or _ReadOptimizationCacheText(Data, 0x84) != "TesterOptCache":
+        data = cache_file.read_bytes()
+        if len(data) < 0x54A or _read_optimization_cache_text(data, 0x84) != "TesterOptCache":
             raise ValueError("Not a MetaTrader TesterOptCache file")
-        HeaderSize = struct.unpack_from("<I", Data, OPT_CACHE_HEADER_SIZE_OFFSET)[0]
-        if not OPT_CACHE_HEADER_SIZE_OFFSET < HeaderSize <= len(Data):
-            raise ValueError(f"Invalid TesterOptCache header size {HeaderSize}")
+        header_size = struct.unpack_from("<I", data, OPT_CACHE_HEADER_SIZE_OFFSET)[0]
+        if not OPT_CACHE_HEADER_SIZE_OFFSET < header_size <= len(data):
+            raise ValueError(f"Invalid TesterOptCache header size {header_size}")
 
         # Extract fixed metadata, descriptor-backed inputs, and binary pass statistics.
-        Header = {
-            "format_version": struct.unpack_from("<I", Data, 0)[0],
-            "copyright": _ReadOptimizationCacheText(Data, 4),
-            "cache_type": _ReadOptimizationCacheText(Data, 0x84),
-            "strategy": _ReadOptimizationCacheText(Data, 0x1B4),
-            "expert": _ReadOptimizationCacheText(Data, 0x234),
-            "server": _ReadOptimizationCacheText(Data, 0x334),
-            "symbol": _ReadOptimizationCacheText(Data, 0x3B4),
-            "account_mode": _ReadOptimizationCacheText(Data, 0x466),
-            "currency": _ReadOptimizationCacheText(Data, 0x506),
-            "initial_deposit": struct.unpack_from("<I", Data, 0x546)[0],
+        header = {
+            "format_version": struct.unpack_from("<I", data, 0)[0],
+            "copyright": _read_optimization_cache_text(data, 4),
+            "cache_type": _read_optimization_cache_text(data, 0x84),
+            "strategy": _read_optimization_cache_text(data, 0x1B4),
+            "expert": _read_optimization_cache_text(data, 0x234),
+            "server": _read_optimization_cache_text(data, 0x334),
+            "symbol": _read_optimization_cache_text(data, 0x3B4),
+            "account_mode": _read_optimization_cache_text(data, 0x466),
+            "currency": _read_optimization_cache_text(data, 0x506),
+            "initial_deposit": struct.unpack_from("<I", data, 0x546)[0],
         }
         # Select the record layout indicated by all-symbol versus single-symbol cache names.
-        Payload = Data[HeaderSize:]
-        Descriptors = _GetOptimizationCacheInputDescriptors(Data, HeaderSize)
-        Inputs = _ParseOptimizationCacheInputs(Data, HeaderSize, Descriptors)
-        Passes = _ParseOptimizationCachePasses(Payload, HeaderSize, Header["initial_deposit"]) if ".all_symbols." in cache_file.name.lower() else _ParseOptimizationCacheSymbolPasses(Payload, HeaderSize, Inputs, Descriptors)
-        Result.update({"Header": Header, "Inputs": Inputs, "OptimizedInputs": [Descriptor["name"] for Descriptor in Descriptors if Descriptor["optimized"]], "Optimization": Passes})
-    except (OSError, UnicodeError, ValueError, struct.error) as Error:
-        Result.update({"Error": str(Error)})
-    return Result
+        payload = data[header_size:]
+        descriptors = _get_optimization_cache_input_descriptors(data, header_size)
+        inputs = _parse_optimization_cache_inputs(data, header_size, descriptors)
+        passes = _parse_optimization_cache_passes(payload, header_size, header["initial_deposit"]) if ".all_symbols." in cache_file.name.lower() else _parse_optimization_cache_symbol_passes(payload, header_size, inputs, descriptors)
+        result.update(
+            {
+                "Header": header,
+                "Inputs": inputs,
+                "OptimizedInputs": [descriptor["name"] for descriptor in descriptors if descriptor["optimized"]],
+                "Optimization": passes,
+            }
+        )
+    except (OSError, UnicodeError, ValueError, struct.error) as error:
+        result.update({"Error": str(error)})
+    return result
 
 
-def DeployCompiledFile(metaquotes: Path, CompiledPath: str, SubDirectory: str = "", Remove: bool = True):
+def deploy_compiled_file(metaquotes: Path, compiled_path: str, subdirectory: str = "", remove: bool = True):
     # Get the filename from the source path
-    filename = os.path.basename(CompiledPath)
+    filename = os.path.basename(compiled_path)
 
     # MQL Subdirectory
-    MQLSubdirectory = ""
-    type = GetProgramType(CompiledPath)
-    if type == "indicator":
-        MQLSubdirectory = "Indicators"
-    elif type == "expert":
-        MQLSubdirectory = "Experts"
-    elif type == "script":
-        MQLSubdirectory = "Scripts"
+    mql_subdirectory = ""
+    program_type = get_program_type(compiled_path)
+    if program_type == "indicator":
+        mql_subdirectory = "Indicators"
+    elif program_type == "expert":
+        mql_subdirectory = "Experts"
+    elif program_type == "script":
+        mql_subdirectory = "Scripts"
     else:
         return None
 
     # Build destination path safely
-    DestinationDir = os.path.join(metaquotes, "MQL5", MQLSubdirectory, SubDirectory)
-    Destination = os.path.join(DestinationDir, filename)
+    destination_dir = os.path.join(metaquotes, "MQL5", mql_subdirectory, subdirectory)
+    destination = os.path.join(destination_dir, filename)
 
     # Create destination directory if needed
-    os.makedirs(DestinationDir, exist_ok=True)
+    os.makedirs(destination_dir, exist_ok=True)
 
     # Copy file (preserves metadata)
-    shutil.copy2(CompiledPath, Destination)
+    shutil.copy2(compiled_path, destination)
 
     # Optionally remove the original
-    if Remove:
-        os.remove(CompiledPath)
+    if remove:
+        os.remove(compiled_path)
 
-    return Destination
+    return destination
 
 
-def _CreateHexFile(expert_path: Path) -> Path:
+def _create_hex_file(expert_path: Path) -> Path:
     # Validate the compiled expert before converting its binary contents.
     expert_path = Path(expert_path)
     if expert_path.suffix.lower() != ".ex5":
@@ -987,7 +1039,7 @@ def _CreateHexFile(expert_path: Path) -> Path:
 
     # Generate an importable Python module that reconstructs the expert bytes.
     hex_data = expert_path.read_bytes().hex()
-    hex_lines = "\n".join(f'    "{hex_data[index:index + 120]}"' for index in range(0, len(hex_data), 120))
+    hex_lines = "\n".join(f'    "{hex_data[index : index + 120]}"' for index in range(0, len(hex_data), 120))
     python_path = expert_path.with_name(f"{expert_path.stem}_hex.py")
     python_path.write_text(
         f'"""Embedded hexadecimal data for {expert_path.name}."""\n\n' "EXPERT_BYTES = bytes.fromhex(\n" f"{hex_lines}\n" ")\n",
