@@ -238,7 +238,7 @@ class BacktestConfig:
     from_date: str = "2024.01.01"
     to_date: str = "2025.01.01"
     forward_mode: BacktestForwardMode = BacktestForwardMode.OFF
-    forward_date: str = "2024.09.01"
+    forward_date: str = ""
     deposit: float = 5000
     leverage: str = "1:100"
     replace_report: bool = True
@@ -402,12 +402,7 @@ def get_program_type(compiled_path: Path | str):
     return "unknown"
 
 
-def create_backtest_file(
-    backtest_file_path: str,
-    expert_path: str,
-    backtest: BacktestConfig | None = None,
-    inputs=None,
-):
+def create_backtest_file(backtest_file_path: str, expert_path: str, backtest: BacktestConfig | None = None, inputs=None):
     # Use the standard backtest settings when no custom configuration is provided.
     backtest = backtest or BacktestConfig()
 
@@ -472,29 +467,20 @@ def compile_mq5(metaquotes: Path, metaeditor: Path, source_path: Path):
             os.remove(log_file)
 
 
+def remove_backtest_reports(metaquotes: Path, result_file_name: str):
+    cache_directory = Path(metaquotes)
+    for cache_file in cache_directory.glob(f"{glob.escape(result_file_name)}*"):
+        if cache_file.is_file():
+            cache_file.unlink()
+
+
 def run_backtest_file(metaquotes: Path, metaeditor: Path, backtest_file_path: Path, result_file_name: str):
-    report_path = os.path.join(metaquotes, result_file_name + "htm")
-    optimization_path = os.path.join(metaquotes, result_file_name + ".xml")
-    symbols_optimization_path = os.path.join(metaquotes, result_file_name + ".symbols.xml")
-
-    if os.path.exists(report_path):
-        os.remove(report_path)
-    if os.path.exists(optimization_path):
-        os.remove(optimization_path)
-    if os.path.exists(symbols_optimization_path):
-        os.remove(symbols_optimization_path)
-
+    remove_backtest_reports(metaquotes, result_file_name)
     proc = start_terminal(metaeditor, "/config:" + str(backtest_file_path))
     return proc.wait()
 
 
-def run_backtest_config(
-    metaquotes: Path,
-    metaeditor: Path,
-    expert_path: str,
-    backtest: BacktestConfig | None = None,
-    inputs=None,
-):
+def run_backtest_config(metaquotes: Path, metaeditor: Path, expert_path: str, backtest: BacktestConfig | None = None, inputs=None):
     backtest = backtest or BacktestConfig()
     config_path = Path(backtest.report_name + ".ini")
     create_backtest_file(config_path, expert_path, backtest, inputs)
