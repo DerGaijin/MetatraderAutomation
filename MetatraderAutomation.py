@@ -410,7 +410,7 @@ def create_backtest_file(backtest_file_path: str, expert_path: str, backtest: Ba
     config = configparser.ConfigParser()
     config.add_section("Tester")
     tester_section = config["Tester"]
-    tester_section["Expert"] = expert_path
+    tester_section["Expert"] = expert_path.replace("/", "\\")
     tester_section["Symbol"] = backtest.symbol
     tester_section["Period"] = backtest.period.value
     tester_section["Model"] = str(backtest.model.value)
