@@ -474,17 +474,17 @@ def remove_backtest_reports(metaquotes: Path, result_file_name: str):
             cache_file.unlink()
 
 
-def run_backtest_file(metaquotes: Path, metaeditor: Path, backtest_file_path: Path, result_file_name: str):
+def run_backtest_file(metaquotes: Path, metaeditor: Path, backtest_file_path: Path, result_file_name: str, background: bool = True):
     remove_backtest_reports(metaquotes, result_file_name)
-    proc = start_terminal(metaeditor, "/config:" + str(backtest_file_path))
+    proc = start_terminal(metaeditor, "/config:" + str(backtest_file_path), background=background)
     return proc.wait()
 
 
-def run_backtest_config(metaquotes: Path, metaeditor: Path, expert_path: str, backtest: BacktestConfig | None = None, inputs=None):
+def run_backtest_config(metaquotes: Path, metaeditor: Path, expert_path: str, backtest: BacktestConfig | None = None, inputs=None, background: bool = True):
     backtest = backtest or BacktestConfig()
     config_path = Path(backtest.report_name + ".ini")
     create_backtest_file(config_path, expert_path, backtest, inputs)
-    run_backtest_file(metaquotes, metaeditor, config_path, backtest.report_name)
+    run_backtest_file(metaquotes, metaeditor, config_path, backtest.report_name, background=background)
     config_path.unlink(missing_ok=True)
 
 
